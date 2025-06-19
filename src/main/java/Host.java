@@ -3,13 +3,13 @@ import java.util.*;
 public class Host {
 	private final static int MAX_COLISOES = 16;
 
-	private Deque<Double> pacotes;
+	private final Queue<Pacote> pacotes;
 	private final double posicaoBarramento;
 	private int colisoes;
 
 	public Host(double posicaoBarramento, double taxaDePacotes, double duracao) {
 		this.posicaoBarramento = posicaoBarramento;
-		this.pacotes = new ArrayDeque<>(gerarPacotes(taxaDePacotes, duracao));
+		this.pacotes = new LinkedList<>(gerarPacotes(taxaDePacotes, duracao));
 		this.colisoes = 0;
 	}
 
@@ -21,26 +21,34 @@ public class Host {
 			return;
 		}
 
-		double tempoBackoff = pacotes.peek() + getTempoBackoffExponencial(larguraDeBanda, colisoes);
-		List<Double> pacotesAtualizados = new ArrayList<>();
-		for (double tempo : pacotes) {
-			pacotesAtualizados.add(Math.max(tempoBackoff, tempo));
+		Pacote pacote = pacotes.peek();
+
+		if (pacote == null) return;
+
+		double tempoBackoff = pacote.getTempo() + getTempoBackoffExponencial(larguraDeBanda, colisoes);
+
+		// atrasa envio dos pacotes previstos, imitando um comportamento de buffer
+		for (Pacote p : pacotes) {
+			if (tempoBackoff < p.getTempo()) break;
+			p.setTempo(tempoBackoff);
 		}
-		pacotes = new ArrayDeque<>(pacotesAtualizados);
 	}
 
 	public void onSucesso() {
 		removerPacote();
 	}
 
-	public List<Double> gerarPacotes(double taxaDePacotes, double duracao) {
-		List<Double> pacotes = new ArrayList<>();
+	public List<Pacote> gerarPacotes(double taxaDePacotes, double duracao) {
+		List<Pacote> pacotes = new ArrayList<>();
 		double tempoAtual = 0;
+
 		while (tempoAtual <= duracao) {
 			tempoAtual += getValorAleatorioConformeTaxa(taxaDePacotes);
-			pacotes.add(tempoAtual);
+			pacotes.add(new Pacote(tempoAtual));
 		}
+
 		Collections.sort(pacotes);
+
 		return pacotes;
 	}
 
@@ -65,12 +73,8 @@ public class Host {
 		return posicaoBarramento;
 	}
 
-	public Deque<Double> getPacotes() {
+	public Queue<Pacote> getPacotes() {
 		return pacotes;
-	}
-
-	public void setPacotes(Deque<Double> pacotes) {
-		this.pacotes = pacotes;
 	}
 
 	public int getColisoes() {

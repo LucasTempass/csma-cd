@@ -1,6 +1,4 @@
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
 
 import static java.lang.Math.abs;
@@ -24,7 +22,6 @@ public class Simulacao {
 	private static void csmaCd(int quantidadeHosts, double taxaDePacotes, double larguraDeBanda, double bitsPorPacote) {
 		List<Host> hosts = gerarHosts(quantidadeHosts, taxaDePacotes);
 
-		double tempoProximoPacote = 0;
 
 		int pacotesTotal = 0;
 		int pacotesTransmitidosTotal = 0;
@@ -35,44 +32,45 @@ public class Simulacao {
 			// não há mais pacotes a serem transmitidos
 			if (hostProximoPacote == null) break;
 
+			Pacote proximoPacote = hostProximoPacote.getPacotes().peek();
+
+			// não há mais pacotes a serem transmitidos
+			if (proximoPacote == null) break;
+
 			pacotesTotal++;
 
-			tempoProximoPacote = hostProximoPacote.getPacotes().peek();
+			double tempoProximoPacote = proximoPacote.getTempo();
 
 			boolean hasColisao = false;
 
 			for (Host host : hosts) {
-				if (host == hostProximoPacote || host.getPacotes().isEmpty()) {
-					// não há possibilidade de colisão
-					continue;
-				}
+				if (host == hostProximoPacote) continue;
+
+				Pacote pacoteHost = host.getPacotes().peek();
+
+				// não há possibilidade de colisão quando sem pacotes
+				if (pacoteHost == null) continue;
 
 				double distancia = abs(hostProximoPacote.getPosicaoBarramento() - host.getPosicaoBarramento());
 				// tempo que um símbolo demora a chegar até o host
 				double tempoPropagacao = distancia / Simulacao.VELOCIDADE_DE_PROPAGACAO_DO_MEIO;
 				// tempo necessário para transmitir o frame por completo
 				double tempoTransmissao = bitsPorPacote / larguraDeBanda;
-				// chegada ao host especificado
-				double tempoChegadaProximoPacote = tempoProximoPacote + tempoPropagacao + tempoTransmissao;
 
-				double tempoPacoteDestinatario = host.getPacotes().peek();
+				double tempoPacoteHost = pacoteHost.getTempo();
+				double tempoChegadaProximoPacoteAoHost = tempoProximoPacote + tempoPropagacao + tempoTransmissao;
 
-				if (tempoProximoPacote + tempoPropagacao < tempoPacoteDestinatario && tempoPacoteDestinatario < tempoChegadaProximoPacote) {
-					// host vai ser capaz de identificar que meio está ocupado e vai atrasar envio
-					List<Double> pacotesAtualizados = new ArrayList<>();
-					for (double tempo : host.getPacotes()) {
-						if (tempoProximoPacote + tempoPropagacao < tempo && tempo < tempoChegadaProximoPacote) {
-							pacotesAtualizados.add(tempoChegadaProximoPacote);
-						}
-						else {
-							pacotesAtualizados.add(tempo);
+				// host vai ser capaz de identificar que meio está ocupado e vai atrasar envio, bufferizando pacotes
+				if (tempoProximoPacote + tempoPropagacao < tempoPacoteHost && tempoPacoteHost < tempoChegadaProximoPacoteAoHost) {
+					for (Pacote pacote : host.getPacotes()) {
+						if (tempoProximoPacote + tempoPropagacao < pacote.getTempo() && pacote.getTempo() < tempoChegadaProximoPacoteAoHost) {
+							pacote.setTempo(tempoChegadaProximoPacoteAoHost);
 						}
 					}
-					host.setPacotes(new ArrayDeque<>(pacotesAtualizados));
 				}
 
 				// host não será capaz de identificar pacote
-				if (tempoPacoteDestinatario <= (tempoProximoPacote + tempoPropagacao)) {
+				if (tempoPacoteHost <= (tempoProximoPacote + tempoPropagacao)) {
 					hasColisao = true;
 					pacotesTotal++;
 					host.onColisao(larguraDeBanda);
@@ -92,12 +90,13 @@ public class Simulacao {
 
 	private static Host getHostProximoPacote(List<Host> hosts) {
 		Host hostProximoPacote = null;
-		double tempoProximoPacote = Double.POSITIVE_INFINITY;
+		// inicializa com valor mínimo
+		double tempoProximoPacote = -1;
 
 		for (Host host : hosts) {
-			Deque<Double> pacotes = host.getPacotes();
-			if (!pacotes.isEmpty() && pacotes.peek() < tempoProximoPacote) {
-				tempoProximoPacote = pacotes.peek();
+			Pacote pacote = host.getPacotes().peek();
+			if (pacote != null && pacote.getTempo() < tempoProximoPacote) {
+				tempoProximoPacote = pacote.getTempo();
 				hostProximoPacote = host;
 			}
 		}
