@@ -83,7 +83,7 @@ public class Simulacao {
 	private static Host getHostProximoPacote(List<Host> hosts) {
 		Host hostProximoPacote = null;
 		// inicializa com valor mínimo
-		double tempoProximoPacote = -1;
+		double tempoProximoPacote = Double.POSITIVE_INFINITY;
 
 		for (Host host : hosts) {
 			Pacote pacote = host.getPacotes().peek();
