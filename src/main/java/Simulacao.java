@@ -5,10 +5,10 @@ import static java.lang.Math.abs;
 
 public class Simulacao {
 
-	static final int COMPRIMENTO_BARRAMENTO = 100;
-	static final double VELOCIDADE_DA_LUZ = 3 * Math.pow(10, 8);
-	static final double VELOCIDADE_DE_PROPAGACAO_DO_MEIO = 0.66 * VELOCIDADE_DA_LUZ;
-	static final double DURACAO_EM_SEGUNDOS = 1000;
+	private static final int COMPRIMENTO_BARRAMENTO = 100;
+	private static final double VELOCIDADE_DA_LUZ = 3 * Math.pow(10, 8);
+	private static final double VELOCIDADE_DE_PROPAGACAO_DO_MEIO = 0.66 * VELOCIDADE_DA_LUZ;
+	private static final double DURACAO_EM_SEGUNDOS = 1000;
 
 	private static List<Host> gerarHosts(int quantidade, double taxaDePacotes) {
 		List<Host> hosts = new ArrayList<>();
@@ -19,12 +19,8 @@ public class Simulacao {
 		return hosts;
 	}
 
-	private static void csmaCd(int quantidadeHosts, double taxaDePacotes, double larguraDeBanda, double bitsPorPacote) {
+	private static List<Host> simularCsmaCd(int quantidadeHosts, double taxaDePacotes, double larguraDeBanda, double bitsPorPacote) {
 		List<Host> hosts = gerarHosts(quantidadeHosts, taxaDePacotes);
-
-
-		int pacotesTotal = 0;
-		int pacotesTransmitidosTotal = 0;
 
 		while (true) {
 			Host hostProximoPacote = getHostProximoPacote(hosts);
@@ -36,8 +32,6 @@ public class Simulacao {
 
 			// não há mais pacotes a serem transmitidos
 			if (proximoPacote == null) break;
-
-			pacotesTotal++;
 
 			double tempoProximoPacote = proximoPacote.getTempo();
 
@@ -72,20 +66,18 @@ public class Simulacao {
 				// host não será capaz de identificar pacote
 				if (tempoPacoteHost <= (tempoProximoPacote + tempoPropagacao)) {
 					hasColisao = true;
-					pacotesTotal++;
 					host.onColisao(larguraDeBanda);
 				}
 			}
 
 			if (!hasColisao) {
-				pacotesTransmitidosTotal++;
 				hostProximoPacote.onSucesso();
 			} else {
 				hostProximoPacote.onColisao(larguraDeBanda);
 			}
 		}
 
-		System.out.printf("Eficiência: %.2f\n", (double) pacotesTransmitidosTotal / pacotesTotal);
+		return hosts;
 	}
 
 	private static Host getHostProximoPacote(List<Host> hosts) {
@@ -107,10 +99,20 @@ public class Simulacao {
 	public static void main(String[] args) {
 		// 10 megabits por segundo
 		double larguraDeBanda = 1e7;
-		int numeroDeHosts = 2;
+		int numeroDeHosts = 3;
 		int bitsPorPacote = 1500;
-		int pacotesPorSegundo = 100;
-		csmaCd(numeroDeHosts, pacotesPorSegundo, larguraDeBanda, bitsPorPacote);
+		int pacotesPorSegundo = 1000;
+		List<Host> hosts = simularCsmaCd(numeroDeHosts, pacotesPorSegundo, larguraDeBanda, bitsPorPacote);
+
+		for (int i = 0; i < hosts.size(); i++) {
+			Host host = hosts.get(i);
+			int quantidadePacotes = host.getQuantidadePacotes();
+			int quantidadeColisoes = host.getQuantidadeColisoes();
+			System.out.printf("Host %d - Quantidade de pacotes: %d.\n", i, quantidadePacotes);
+			System.out.printf("Host %d - Quantidade de colisões: %d.\n", i, quantidadeColisoes);
+			System.out.printf("Host %d - Quantidade de colisões por pacote: %.2f\n", i, (float) quantidadeColisoes / (float) quantidadePacotes);
+			System.out.printf("Host %d - Taxa de erro: %.2f%%.\n", i, ((float) host.getPacotesPerdidos() / (float) quantidadePacotes) * 100.0);
+		}
 	}
 
 }

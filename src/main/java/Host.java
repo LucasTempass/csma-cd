@@ -5,18 +5,24 @@ public class Host {
 
 	private final Queue<Pacote> pacotes;
 	private final double posicaoBarramento;
-	private int colisoes;
+
+	// métricas
+	private final int quantidadePacotes;
+	private int quantidadeFalhas;
+	private int quantidadeColisoes;
 
 	public Host(double posicaoBarramento, double taxaDePacotes, double duracao) {
 		this.posicaoBarramento = posicaoBarramento;
 		this.pacotes = new LinkedList<>(gerarPacotes(taxaDePacotes, duracao));
-		this.colisoes = 0;
+		this.quantidadePacotes = pacotes.size();
+		this.quantidadeColisoes = 0;
 	}
 
 	public void onColisao(double larguraDeBanda) {
-		colisoes++;
+		quantidadeColisoes++;
 
-		if (colisoes > MAX_COLISOES) {
+		if (quantidadeColisoes > MAX_COLISOES) {
+			quantidadeFalhas++;
 			removerPacote();
 			return;
 		}
@@ -25,7 +31,7 @@ public class Host {
 
 		if (pacote == null) return;
 
-		double tempoBackoff = pacote.getTempo() + getTempoBackoffExponencial(larguraDeBanda, colisoes);
+		double tempoBackoff = pacote.getTempo() + getTempoBackoffExponencial(larguraDeBanda, quantidadeColisoes);
 
 		// atrasa envio dos pacotes previstos, imitando um comportamento de buffer
 		for (Pacote p : pacotes) {
@@ -64,9 +70,9 @@ public class Host {
 		return slot * 512 / larguraDeBanda;
 	}
 
-	public void removerPacote() {
+	private void removerPacote() {
 		pacotes.poll();
-		colisoes = 0;
+		quantidadeColisoes = 0;
 	}
 
 	public double getPosicaoBarramento() {
@@ -77,8 +83,17 @@ public class Host {
 		return pacotes;
 	}
 
-	public int getColisoes() {
-		return colisoes;
+	public int getQuantidadePacotes() {
+		return quantidadePacotes;
+	}
+
+	public int getQuantidadeColisoes() {
+		return quantidadeColisoes;
+	}
+
+
+	public int getPacotesPerdidos() {
+		return quantidadeFalhas;
 	}
 
 }
