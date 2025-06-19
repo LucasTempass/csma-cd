@@ -5,6 +5,7 @@ public class Host {
 
 	private final Queue<Pacote> pacotes;
 	private final double posicaoBarramento;
+	private int colisoes;
 
 	// métricas
 	private final List<Pacote> pacotesTransmitidos;
@@ -16,14 +17,16 @@ public class Host {
 		this.posicaoBarramento = posicaoBarramento;
 		this.pacotes = new LinkedList<>(gerarPacotes(taxaDePacotes, duracao));
 		this.quantidadePacotes = pacotes.size();
-		this.quantidadeColisoes = 0;
+		this.colisoes = 0;
 		this.pacotesTransmitidos = new ArrayList<>();
 	}
 
 	public void onColisao(double larguraDeBanda) {
 		quantidadeColisoes++;
 
-		if (quantidadeColisoes > MAX_COLISOES) {
+		colisoes++;
+
+		if (colisoes > MAX_COLISOES) {
 			quantidadeFalhas++;
 			removerPacote();
 			return;
@@ -33,7 +36,7 @@ public class Host {
 
 		if (pacote == null) return;
 
-		double tempoBackoff = pacote.getTempo() + getTempoBackoffExponencial(larguraDeBanda, quantidadeColisoes);
+		double tempoBackoff = pacote.getTempo() + getTempoBackoffExponencial(larguraDeBanda, colisoes);
 
 		// atrasa envio dos pacotes previstos, imitando um comportamento de buffer
 		for (Pacote p : pacotes) {
@@ -74,7 +77,7 @@ public class Host {
 	}
 
 	private Pacote removerPacote() {
-		quantidadeColisoes = 0;
+		colisoes = 0;
 		return pacotes.poll();
 	}
 

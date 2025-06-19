@@ -2,13 +2,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static java.lang.Math.abs;
+import static java.lang.Math.pow;
 
 public class Simulacao {
 
 	private static final int COMPRIMENTO_BARRAMENTO = 100;
 	private static final double VELOCIDADE_DA_LUZ = 3 * Math.pow(10, 8);
 	private static final double VELOCIDADE_DE_PROPAGACAO_DO_MEIO = 0.66 * VELOCIDADE_DA_LUZ;
-	private static final double DURACAO_EM_SEGUNDOS = 1000;
+	private static final double DURACAO_EM_SEGUNDOS = 30;
+
+	private static double tempoDeConclusao = 0.0;
+	private static double quantidadesDePacotes = 0.0;
 
 	private static List<Host> gerarHosts(int quantidade, double taxaDePacotes) {
 		List<Host> hosts = new ArrayList<>();
@@ -70,6 +74,10 @@ public class Simulacao {
 				}
 			}
 
+			// apenas para métricas
+			tempoDeConclusao = tempoProximoPacote;
+			quantidadesDePacotes++;
+
 			if (!hasColisao) {
 				hostProximoPacote.onSucesso();
 			} else {
@@ -100,8 +108,8 @@ public class Simulacao {
 		// 10 megabits por segundo
 		double larguraDeBanda = 1e7;
 		int numeroDeHosts = 3;
-		int bitsPorPacote = 1500;
-		int pacotesPorSegundo = 1000;
+		int bitsPorPacote = 512;
+		int pacotesPorSegundo = 10000;
 		List<Host> hosts = simularCsmaCd(numeroDeHosts, pacotesPorSegundo, larguraDeBanda, bitsPorPacote);
 
 		for (int i = 0; i < hosts.size(); i++) {
@@ -112,8 +120,11 @@ public class Simulacao {
 			System.out.printf("Host %d - Quantidade de colisões: %d.\n", i, quantidadeColisoes);
 			System.out.printf("Host %d - Quantidade de colisões por pacote: %.2f\n", i, (float) quantidadeColisoes / (float) quantidadePacotes);
 			System.out.printf("Host %d - Taxa de erro: %.2f%%.\n", i, ((float) host.getPacotesPerdidos() / (float) quantidadePacotes) * 100.0);
-			System.out.printf("Host %d - Delay médio: %.5fs.\n", i, host.getTempoMedioDelay());
+			System.out.printf("Host %d - Delay médio: %.8fs.\n", i, host.getTempoMedioDelay());
 		}
+
+		double bitsPorSegundo = (bitsPorPacote * quantidadesDePacotes) / tempoDeConclusao;
+		System.out.printf("Throughput: %.2f Mbps\n", bitsPorSegundo * pow(10, -6));
 	}
 
 }
