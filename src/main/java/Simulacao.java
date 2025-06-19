@@ -112,6 +112,7 @@ public class Simulacao {
 			System.out.printf("Host %d - Quantidade de colisões: %d.\n", i, quantidadeColisoes);
 			System.out.printf("Host %d - Quantidade de colisões por pacote: %.2f\n", i, (float) quantidadeColisoes / (float) quantidadePacotes);
 			System.out.printf("Host %d - Taxa de erro: %.2f%%.\n", i, ((float) host.getPacotesPerdidos() / (float) quantidadePacotes) * 100.0);
+			System.out.printf("Host %d - Delay médio: %.5fs.\n", i, host.getTempoMedioDelay());
 		}
 	}
 

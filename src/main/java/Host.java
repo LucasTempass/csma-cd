@@ -7,6 +7,7 @@ public class Host {
 	private final double posicaoBarramento;
 
 	// métricas
+	private final List<Pacote> pacotesTransmitidos;
 	private final int quantidadePacotes;
 	private int quantidadeFalhas;
 	private int quantidadeColisoes;
@@ -16,6 +17,7 @@ public class Host {
 		this.pacotes = new LinkedList<>(gerarPacotes(taxaDePacotes, duracao));
 		this.quantidadePacotes = pacotes.size();
 		this.quantidadeColisoes = 0;
+		this.pacotesTransmitidos = new ArrayList<>();
 	}
 
 	public void onColisao(double larguraDeBanda) {
@@ -41,7 +43,8 @@ public class Host {
 	}
 
 	public void onSucesso() {
-		removerPacote();
+		Pacote pacote = removerPacote();
+		pacotesTransmitidos.add(pacote);
 	}
 
 	public List<Pacote> gerarPacotes(double taxaDePacotes, double duracao) {
@@ -70,9 +73,9 @@ public class Host {
 		return slot * 512 / larguraDeBanda;
 	}
 
-	private void removerPacote() {
-		pacotes.poll();
+	private Pacote removerPacote() {
 		quantidadeColisoes = 0;
+		return pacotes.poll();
 	}
 
 	public double getPosicaoBarramento() {
@@ -94,6 +97,10 @@ public class Host {
 
 	public int getPacotesPerdidos() {
 		return quantidadeFalhas;
+	}
+
+	public double getTempoMedioDelay() {
+		return pacotesTransmitidos.stream().mapToDouble(Pacote::getDelay).average().orElse(0);
 	}
 
 }
