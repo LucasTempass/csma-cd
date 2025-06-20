@@ -1,29 +1,30 @@
+import java.math.BigDecimal;
+
 public class Pacote implements Comparable<Pacote> {
 
-	private final double tempoPrevisto;
-
-	private double tempo;
+	private final BigDecimal tempoPrevisto;
+	private BigDecimal tempo;
 
 	public Pacote(double tempoPrevisto) {
-		this.tempoPrevisto = tempoPrevisto;
-		this.tempo = tempoPrevisto;
+		this.tempoPrevisto = BigDecimal.valueOf(tempoPrevisto);
+		this.tempo = BigDecimal.valueOf(tempoPrevisto);
 	}
 
 	public double getDelay() {
-		return tempo - tempoPrevisto;
+		return tempo.subtract(tempoPrevisto).doubleValue();
 	}
 
-	public double getTempo() {
+	public BigDecimal getTempo() {
 		return tempo;
 	}
 
-	public void setTempo(double tempo) {
+	public void setTempo(BigDecimal tempo) {
 		this.tempo = tempo;
 	}
 
 	@Override
 	public int compareTo(Pacote o) {
-		return Double.compare(this.tempo, o.tempo);
+		return this.tempo.compareTo(o.tempo);
 	}
 
 }

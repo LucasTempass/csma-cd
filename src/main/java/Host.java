@@ -1,4 +1,7 @@
+import java.math.BigDecimal;
 import java.util.*;
+
+import static java.math.BigDecimal.valueOf;
 
 public class Host {
 	private final static int MAX_COLISOES = 16;
@@ -36,11 +39,11 @@ public class Host {
 
 		if (pacote == null) return;
 
-		double tempoBackoff = pacote.getTempo() + getTempoBackoffExponencial(larguraDeBanda, colisoes);
+		BigDecimal tempoBackoff = pacote.getTempo().add(getTempoBackoffExponencial(larguraDeBanda, colisoes));
 
 		// atrasa envio dos pacotes previstos, imitando um comportamento de buffer
 		for (Pacote p : pacotes) {
-			if (tempoBackoff < p.getTempo()) break;
+			if (tempoBackoff.compareTo(p.getTempo()) < 0) break;
 			p.setTempo(tempoBackoff);
 		}
 	}
@@ -68,12 +71,12 @@ public class Host {
 		return -Math.log(1 - (1 - Math.random())) / taxa;
 	}
 
-	private double getTempoBackoffExponencial(double larguraDeBanda, int colisoes) {
+	private BigDecimal getTempoBackoffExponencial(double larguraDeBanda, int colisoes) {
 		double quantidadeSlots = Math.pow(2, colisoes);
 		// intervalo de [0, N[
 		double slot = Math.random() * quantidadeSlots;
 		// tamanho mínimo do frame de 512 bits (64 bytes)
-		return slot * 512 / larguraDeBanda;
+		return valueOf(slot * 512).divide(valueOf(larguraDeBanda));
 	}
 
 	private Pacote removerPacote() {
