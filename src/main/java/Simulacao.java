@@ -12,8 +12,9 @@ public class Simulacao {
 	private static final int COMPRIMENTO_BARRAMENTO = 100;
 	private static final BigDecimal VELOCIDADE_DA_LUZ = new BigDecimal("3E8");
 	private static final BigDecimal VELOCIDADE_DE_PROPAGACAO_DO_MEIO = VELOCIDADE_DA_LUZ.multiply(new BigDecimal("0.66"));
-	private static final double DURACAO_EM_SEGUNDOS = 10;
+	private static final double DURACAO_EM_SEGUNDOS = 1;
 	private static final MathContext PRECISAO = MathContext.DECIMAL128;
+	public static final int BITS_POR_PACOTE = 512;
 
 	private static double tempoDeConclusao = 0.0;
 	private static double quantidadesDePacotes = 0.0;
@@ -27,7 +28,7 @@ public class Simulacao {
 		return hosts;
 	}
 
-	private static List<Host> simularCsmaCd(int quantidadeHosts, double taxaDePacotes, double larguraDeBanda, double bitsPorPacote) {
+	private static List<Host> simularCsmaCd(int quantidadeHosts, double taxaDePacotes, double larguraDeBanda) {
 		List<Host> hosts = gerarHosts(quantidadeHosts, taxaDePacotes);
 
 		while (true) {
@@ -58,16 +59,18 @@ public class Simulacao {
 				// tempo que um símbolo demora a chegar até o host
 				BigDecimal tempoPropagacao = valueOf(distancia).divide(VELOCIDADE_DE_PROPAGACAO_DO_MEIO, PRECISAO);
 				// tempo necessário para transmitir o frame por completo
-				BigDecimal tempoTransmissao = valueOf(bitsPorPacote).divide(valueOf(larguraDeBanda), PRECISAO);
+				BigDecimal tempoTransmissao = valueOf(Simulacao.BITS_POR_PACOTE).divide(valueOf(larguraDeBanda), PRECISAO);
 
 				BigDecimal tempoPacoteHost = pacoteHost.getTempo();
 				BigDecimal tempoChegadaProximoPacoteAoHost = tempoProximoPacote.add(tempoPropagacao).add(tempoTransmissao);
 
 				// host vai ser capaz de identificar que meio está ocupado e vai atrasar envio, bufferizando pacotes
 				if (tempoProximoPacote.add(tempoPropagacao).compareTo(tempoPacoteHost) < 0 && tempoPacoteHost.compareTo(tempoChegadaProximoPacoteAoHost) < 0) {
+					int contador = 0;
 					for (Pacote pacote : host.getPacotes()) {
 						if (tempoProximoPacote.add(tempoPropagacao).compareTo(pacote.getTempo()) < 0 && pacote.getTempo().compareTo(tempoChegadaProximoPacoteAoHost) < 0) {
-							pacote.setTempo(tempoChegadaProximoPacoteAoHost);
+							pacote.setTempo(tempoChegadaProximoPacoteAoHost.add(tempoTransmissao.multiply(valueOf(contador))));
+							contador++;
 						}
 					}
 				}
@@ -108,10 +111,9 @@ public class Simulacao {
 	public static void main(String[] args) {
 		// 10 megabits por segundo
 		double larguraDeBanda = 1e7;
-		int numeroDeHosts = 3;
-		int bitsPorPacote = 512;
-		int pacotesPorSegundo = 10000;
-		List<Host> hosts = simularCsmaCd(numeroDeHosts, pacotesPorSegundo, larguraDeBanda, bitsPorPacote);
+		int numeroDeHosts = 2;
+		int pacotesPorSegundo = 4000;
+		List<Host> hosts = simularCsmaCd(numeroDeHosts, pacotesPorSegundo, larguraDeBanda);
 
 		for (int i = 0; i < hosts.size(); i++) {
 			Host host = hosts.get(i);
@@ -124,7 +126,7 @@ public class Simulacao {
 			System.out.printf("Host %d - Delay médio: %.8fs.\n", i, host.getTempoMedioDelay());
 		}
 
-		double bitsPorSegundo = (bitsPorPacote * quantidadesDePacotes) / tempoDeConclusao;
+		double bitsPorSegundo = (BITS_POR_PACOTE * quantidadesDePacotes) / tempoDeConclusao;
 		System.out.printf("Throughput: %.2f Mbps\n", bitsPorSegundo * pow(10, -6));
 	}
 

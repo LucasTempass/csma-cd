@@ -1,7 +1,9 @@
 import java.math.BigDecimal;
 import java.util.*;
 
+import static java.lang.Math.max;
 import static java.math.BigDecimal.valueOf;
+import static java.math.MathContext.DECIMAL128;
 
 public class Host {
 	private final static int MAX_COLISOES = 16;
@@ -41,10 +43,14 @@ public class Host {
 
 		BigDecimal tempoBackoff = pacote.getTempo().add(getTempoBackoffExponencial(larguraDeBanda, colisoes));
 
+		BigDecimal tempoTransmissao = valueOf(Simulacao.BITS_POR_PACOTE).divide(valueOf(larguraDeBanda), DECIMAL128);
+
+		int contador = 0;
 		// atrasa envio dos pacotes previstos, imitando um comportamento de buffer
 		for (Pacote p : pacotes) {
 			if (tempoBackoff.compareTo(p.getTempo()) < 0) break;
-			p.setTempo(tempoBackoff);
+			p.setTempo(tempoBackoff.add(tempoTransmissao.multiply(valueOf(contador))));
+			contador++;
 		}
 	}
 
@@ -56,9 +62,10 @@ public class Host {
 	public List<Pacote> gerarPacotes(double taxaDePacotes, double duracao) {
 		List<Pacote> pacotes = new ArrayList<>();
 		double tempoAtual = 0;
+		BigDecimal tempoTransmissao = valueOf(Simulacao.BITS_POR_PACOTE).divide(valueOf(1e7), DECIMAL128);
 
 		while (tempoAtual <= duracao) {
-			tempoAtual += getValorAleatorioConformeTaxa(taxaDePacotes);
+			tempoAtual += max(tempoTransmissao.doubleValue(), getValorAleatorioConformeTaxa(taxaDePacotes));
 			pacotes.add(new Pacote(tempoAtual));
 		}
 
