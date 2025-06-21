@@ -65,13 +65,13 @@ public class Simulacao {
 				BigDecimal tempoPropagacao = valueOf(distancia).divide(VELOCIDADE_DE_PROPAGACAO_DO_MEIO, PRECISAO);
 
 				BigDecimal tempoPacoteHost = pacoteHost.getTempo();
-				BigDecimal tempoChegadaProximoPacoteAoHost = tempoProximoPacote.add(tempoPropagacao).add(tempoTransmissao);
+				BigDecimal tempoConclusaoProximoPacoteAoHost = tempoProximoPacote.add(tempoPropagacao).add(tempoTransmissao);
 
 				// host vai ser capaz de identificar que meio está ocupado e vai atrasar envio, bufferizando pacotes
-				if (isDetectavelAndInterseccao(tempoProximoPacote, tempoPropagacao, tempoPacoteHost, tempoChegadaProximoPacoteAoHost)) {
+				if (isDetectavelAndHasInterseccao(tempoProximoPacote, tempoPropagacao, tempoPacoteHost, tempoConclusaoProximoPacoteAoHost)) {
 					for (Pacote pacote : host.getPacotes()) {
-						if (isDetectavelAndInterseccao(tempoProximoPacote, tempoPropagacao, pacote.getTempo(), tempoChegadaProximoPacoteAoHost)) {
-							pacote.setTempo(tempoChegadaProximoPacoteAoHost);
+						if (isDetectavelAndHasInterseccao(tempoProximoPacote, tempoPropagacao, pacote.getTempo(), tempoConclusaoProximoPacoteAoHost)) {
+							pacote.setTempo(tempoConclusaoProximoPacoteAoHost);
 						}
 					}
 				}
@@ -106,8 +106,14 @@ public class Simulacao {
 		return hosts;
 	}
 
-	private static boolean isDetectavelAndInterseccao(BigDecimal tempoProximoPacote, BigDecimal tempoPropagacao, BigDecimal tempoPacoteHost, BigDecimal tempoChegadaProximoPacoteAoHost) {
-		return tempoProximoPacote.add(tempoPropagacao).compareTo(tempoPacoteHost) < 0 && tempoPacoteHost.compareTo(tempoChegadaProximoPacoteAoHost) < 0;
+	private static boolean isDetectavelAndHasInterseccao(BigDecimal tempoProximoPacote, BigDecimal tempoPropagacao, BigDecimal tempoPacoteHost, BigDecimal tempoConclusaoProximoPacoteAoHost) {
+		// tempo de chegada do primeiro símbolo de informação
+		boolean isDetectavel = tempoProximoPacote.add(tempoPropagacao).compareTo(tempoPacoteHost) < 0;
+
+		if (!isDetectavel) return false;
+
+		// pacote do host seria enviado antes da conclusão do envio do próximo pacote
+		return tempoPacoteHost.compareTo(tempoConclusaoProximoPacoteAoHost) < 0;
 	}
 
 	private static Host getHostProximoPacote(List<Host> hosts) {
