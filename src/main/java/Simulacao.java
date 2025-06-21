@@ -15,6 +15,7 @@ public class Simulacao {
 	private static final double DURACAO_EM_SEGUNDOS = 1;
 	private static final MathContext PRECISAO = MathContext.DECIMAL128;
 	public static final int BITS_POR_PACOTE = 512;
+	public static final int BITS_INTERFRAME = 96;
 
 	private static double tempoDeConclusao = 0.0;
 	private static double quantidadesDePacotes = 0.0;
@@ -30,6 +31,10 @@ public class Simulacao {
 
 	private static List<Host> simularCsmaCd(int quantidadeHosts, double taxaDePacotes, double larguraDeBanda) {
 		List<Host> hosts = gerarHosts(quantidadeHosts, taxaDePacotes);
+
+		// tempo necessário para transmitir o frame por completo
+		BigDecimal tempoTransmissao = valueOf(Simulacao.BITS_POR_PACOTE).divide(valueOf(larguraDeBanda), PRECISAO);
+		BigDecimal tempoInterframe = valueOf(BITS_INTERFRAME).divide(valueOf(larguraDeBanda), PRECISAO);
 
 		while (true) {
 			Host hostProximoPacote = getHostProximoPacote(hosts);
@@ -58,8 +63,6 @@ public class Simulacao {
 
 				// tempo que um símbolo demora a chegar até o host
 				BigDecimal tempoPropagacao = valueOf(distancia).divide(VELOCIDADE_DE_PROPAGACAO_DO_MEIO, PRECISAO);
-				// tempo necessário para transmitir o frame por completo
-				BigDecimal tempoTransmissao = valueOf(Simulacao.BITS_POR_PACOTE).divide(valueOf(larguraDeBanda), PRECISAO);
 
 				BigDecimal tempoPacoteHost = pacoteHost.getTempo();
 				BigDecimal tempoChegadaProximoPacoteAoHost = tempoProximoPacote.add(tempoPropagacao).add(tempoTransmissao);
@@ -87,13 +90,15 @@ public class Simulacao {
 			if (!hasColisao) {
 				hostProximoPacote.onSucesso();
 
-				Pacote p = hostProximoPacote.getPacotes().peek();
+				// atrasa os próximos pacotes para contemplar tempo inteframe
+				BigDecimal tempoMinimoProximosPacotes = proximoPacote.getTempo().add(tempoInterframe);
 
-				if (p == null) continue;
-
-				BigDecimal tempo = p.getTempo();
-				BigDecimal tempoComInterframe = tempo.add(valueOf(96).divide(valueOf(larguraDeBanda), PRECISAO));
-				p.setTempo(tempo.compareTo(tempoComInterframe) <= 0 ? tempo : tempoComInterframe);
+				for (Pacote pacote : hostProximoPacote.getPacotes()) {
+					if (pacote.getTempo().compareTo(tempoMinimoProximosPacotes) >= 0) {
+						break;
+					}
+					pacote.setTempo(tempoMinimoProximosPacotes);
+				}
 			} else {
 				hostProximoPacote.onColisao(larguraDeBanda);
 			}
@@ -122,7 +127,7 @@ public class Simulacao {
 		// 10 megabits por segundo
 		double larguraDeBanda = 1e7;
 		int numeroDeHosts = 2;
-		int pacotesPorSegundo = 4000;
+		int pacotesPorSegundo = 9000;
 		List<Host> hosts = simularCsmaCd(numeroDeHosts, pacotesPorSegundo, larguraDeBanda);
 
 		for (int i = 0; i < hosts.size(); i++) {
