@@ -43,14 +43,10 @@ public class Host {
 
 		BigDecimal tempoBackoff = pacote.getTempo().add(getTempoBackoffExponencial(larguraDeBanda, colisoes));
 
-		BigDecimal tempoTransmissao = valueOf(Simulacao.BITS_POR_PACOTE).divide(valueOf(larguraDeBanda), DECIMAL128);
-
-		int contador = 0;
 		// atrasa envio dos pacotes previstos, imitando um comportamento de buffer
 		for (Pacote p : pacotes) {
 			if (tempoBackoff.compareTo(p.getTempo()) < 0) break;
-			p.setTempo(tempoBackoff.add(tempoTransmissao.multiply(valueOf(contador))));
-			contador++;
+			p.setTempo(tempoBackoff);
 		}
 	}
 
