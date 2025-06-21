@@ -88,6 +88,14 @@ public class Simulacao {
 
 			if (!hasColisao) {
 				hostProximoPacote.onSucesso();
+
+				Pacote p = hostProximoPacote.getPacotes().peek();
+
+				if (p == null) continue;
+
+				BigDecimal tempo = p.getTempo();
+				BigDecimal tempoComInterframe = tempo.add(valueOf(96).divide(valueOf(larguraDeBanda), PRECISAO));
+				p.setTempo(tempo.compareTo(tempoComInterframe) <= 0 ? tempo : tempoComInterframe);
 			} else {
 				hostProximoPacote.onColisao(larguraDeBanda);
 			}
