@@ -63,21 +63,23 @@ public class Simulacao {
 
 				// tempo que um símbolo demora a chegar até o host
 				BigDecimal tempoPropagacao = valueOf(distancia).divide(VELOCIDADE_DE_PROPAGACAO_DO_MEIO, PRECISAO);
+				// tempo de chegada do primeiro símbolo de informação
+				BigDecimal tempoDeteccao = tempoProximoPacote.add(tempoPropagacao);
+				BigDecimal tempoConclusaoPacote = tempoDeteccao.add(tempoTransmissao);
 
 				BigDecimal tempoPacoteHost = pacoteHost.getTempo();
-				BigDecimal tempoConclusaoProximoPacoteAoHost = tempoProximoPacote.add(tempoPropagacao).add(tempoTransmissao);
 
 				// host vai ser capaz de identificar que meio está ocupado e vai atrasar envio, bufferizando pacotes
-				if (isDetectavelAndHasInterseccao(tempoProximoPacote, tempoPropagacao, tempoPacoteHost, tempoConclusaoProximoPacoteAoHost)) {
+				if (isDetectavelAndHasInterseccao(tempoPacoteHost, tempoConclusaoPacote, tempoDeteccao)) {
 					for (Pacote pacote : host.getPacotes()) {
-						if (isDetectavelAndHasInterseccao(tempoProximoPacote, tempoPropagacao, pacote.getTempo(), tempoConclusaoProximoPacoteAoHost)) {
-							pacote.setTempo(tempoConclusaoProximoPacoteAoHost);
+						if (isDetectavelAndHasInterseccao(pacote.getTempo(), tempoConclusaoPacote, tempoDeteccao)) {
+							pacote.setTempo(tempoConclusaoPacote);
 						}
 					}
 				}
 
 				// host não será capaz de identificar pacote
-				if (tempoPacoteHost.compareTo(tempoProximoPacote.add(tempoPropagacao)) <= 0) {
+				if (tempoPacoteHost.compareTo(tempoDeteccao) <= 0) {
 					hasColisao = true;
 					host.onColisao(larguraDeBanda);
 				}
@@ -106,9 +108,8 @@ public class Simulacao {
 		return hosts;
 	}
 
-	private static boolean isDetectavelAndHasInterseccao(BigDecimal tempoProximoPacote, BigDecimal tempoPropagacao, BigDecimal tempoPacoteHost, BigDecimal tempoConclusaoProximoPacoteAoHost) {
-		// tempo de chegada do primeiro símbolo de informação
-		boolean isDetectavel = tempoProximoPacote.add(tempoPropagacao).compareTo(tempoPacoteHost) < 0;
+	private static boolean isDetectavelAndHasInterseccao(BigDecimal tempoPacoteHost, BigDecimal tempoConclusaoProximoPacoteAoHost, BigDecimal tempoDeteccao) {
+		boolean isDetectavel = tempoDeteccao.compareTo(tempoPacoteHost) < 0;
 
 		if (!isDetectavel) return false;
 
