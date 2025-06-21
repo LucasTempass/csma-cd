@@ -65,12 +65,10 @@ public class Simulacao {
 				BigDecimal tempoChegadaProximoPacoteAoHost = tempoProximoPacote.add(tempoPropagacao).add(tempoTransmissao);
 
 				// host vai ser capaz de identificar que meio está ocupado e vai atrasar envio, bufferizando pacotes
-				if (tempoProximoPacote.add(tempoPropagacao).compareTo(tempoPacoteHost) < 0 && tempoPacoteHost.compareTo(tempoChegadaProximoPacoteAoHost) < 0) {
-					int contador = 0;
+				if (isDetectavelAndInterseccao(tempoProximoPacote, tempoPropagacao, tempoPacoteHost, tempoChegadaProximoPacoteAoHost)) {
 					for (Pacote pacote : host.getPacotes()) {
-						if (tempoProximoPacote.add(tempoPropagacao).compareTo(pacote.getTempo()) < 0 && pacote.getTempo().compareTo(tempoChegadaProximoPacoteAoHost) < 0) {
-							pacote.setTempo(tempoChegadaProximoPacoteAoHost.add(tempoTransmissao.multiply(valueOf(contador))));
-							contador++;
+						if (isDetectavelAndInterseccao(tempoProximoPacote, tempoPropagacao, pacote.getTempo(), tempoChegadaProximoPacoteAoHost)) {
+							pacote.setTempo(tempoChegadaProximoPacoteAoHost);
 						}
 					}
 				}
@@ -101,6 +99,10 @@ public class Simulacao {
 			}
 		}
 		return hosts;
+	}
+
+	private static boolean isDetectavelAndInterseccao(BigDecimal tempoProximoPacote, BigDecimal tempoPropagacao, BigDecimal tempoPacoteHost, BigDecimal tempoChegadaProximoPacoteAoHost) {
+		return tempoProximoPacote.add(tempoPropagacao).compareTo(tempoPacoteHost) < 0 && tempoPacoteHost.compareTo(tempoChegadaProximoPacoteAoHost) < 0;
 	}
 
 	private static Host getHostProximoPacote(List<Host> hosts) {
