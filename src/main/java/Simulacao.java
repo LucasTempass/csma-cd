@@ -92,20 +92,25 @@ public class Simulacao {
 			if (!hasColisao) {
 				hostProximoPacote.onSucesso();
 
-				// atrasa os próximos pacotes para contemplar tempo inteframe
-				BigDecimal tempoMinimoProximosPacotes = proximoPacote.getTempo().add(tempoInterframe);
+				BigDecimal tempoMinimoProximosPacotes = tempoProximoPacote.add(tempoTransmissao).add(tempoInterframe);
 
-				for (Pacote pacote : hostProximoPacote.getPacotes()) {
-					if (pacote.getTempo().compareTo(tempoMinimoProximosPacotes) >= 0) {
-						break;
-					}
-					pacote.setTempo(tempoMinimoProximosPacotes);
-				}
+				// atrasa os próximos pacotes para contemplar tempo inteframe
+				atualizarPacote(hostProximoPacote, tempoMinimoProximosPacotes);
 			} else {
 				hostProximoPacote.onColisao(larguraDeBanda);
 			}
 		}
 		return hosts;
+	}
+
+	private static void atualizarPacote(Host hostProximoPacote, BigDecimal tempoMinimo) {
+		var pacote = hostProximoPacote.getPacotes().peek();
+
+		if (pacote == null) return;
+
+		if (pacote.getTempo().compareTo(tempoMinimo) < 0) {
+			pacote.setTempo(tempoMinimo);
+		}
 	}
 
 	private static boolean isDetectavelAndHasInterseccao(BigDecimal tempoPacoteHost, BigDecimal tempoConclusaoProximoPacoteAoHost, BigDecimal tempoDeteccao) {
