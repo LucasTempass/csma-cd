@@ -26,7 +26,7 @@ public class Host {
 		this.pacotesTransmitidos = new ArrayList<>();
 	}
 
-	public void onColisao(double larguraDeBanda) {
+	public void onColisao(double larguraDeBanda, BigDecimal tempo) {
 		quantidadeColisoes++;
 
 		colisoes++;
@@ -41,7 +41,7 @@ public class Host {
 
 		if (pacote == null) return;
 
-		BigDecimal tempoBackoff = pacote.getTempo().add(getTempoBackoffExponencial(larguraDeBanda, colisoes));
+		BigDecimal tempoBackoff = tempo.add(getTempoBackoffExponencial(larguraDeBanda, colisoes));
 
 		// atrasa envio dos pacotes previstos, imitando um comportamento de buffer
 		for (Pacote p : pacotes) {

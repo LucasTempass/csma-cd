@@ -3,7 +3,6 @@ import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.List;
 
-import static java.lang.Math.abs;
 import static java.lang.Math.pow;
 import static java.math.BigDecimal.valueOf;
 
@@ -16,25 +15,29 @@ public class Simulacao {
 	private static final MathContext PRECISAO = MathContext.DECIMAL128;
 	public static final int BITS_POR_PACOTE = 512;
 	public static final int BITS_INTERFRAME = 96;
+	private static final double VAZAO = 1e7;
+	private static final int DISTANCIA_ENTRE_HOSTS = 100;
+
+	// tempo que um símbolo demora a chegar até o host
+	private static final BigDecimal TEMPO_PROPAGACAO = valueOf(DISTANCIA_ENTRE_HOSTS).divide(VELOCIDADE_DE_PROPAGACAO_DO_MEIO, PRECISAO);
+	// tempo necessário para transmitir o frame por completo
+	private static final BigDecimal TEMPO_TRANSMISSAO = valueOf(Simulacao.BITS_POR_PACOTE).divide(valueOf(VAZAO), PRECISAO);
+	private static final BigDecimal TEMPO_INTERFRAME = valueOf(BITS_INTERFRAME).divide(valueOf(VAZAO), PRECISAO);
 
 	private static BigDecimal tempoDeConclusao = BigDecimal.ZERO;
 	private static double quantidadesDePacotes = 0.0;
 
-	private static List<Host> gerarHosts(int quantidade, double taxaDePacotes) {
+	private static List<Host> gerarHosts(double taxaDePacotes) {
 		List<Host> hosts = new ArrayList<>();
-		double distanciaEntreHosts = COMPRIMENTO_BARRAMENTO / Math.pow(2, quantidade - 2);
-		for (int i = 0; i < quantidade; i++) {
+		double distanciaEntreHosts = COMPRIMENTO_BARRAMENTO / Math.pow(2, 0);
+		for (int i = 0; i < 2; i++) {
 			hosts.add(new Host(i * distanciaEntreHosts, taxaDePacotes, DURACAO_EM_SEGUNDOS));
 		}
 		return hosts;
 	}
 
-	private static List<Host> simularCsmaCd(int quantidadeHosts, double taxaDePacotes, double larguraDeBanda) {
-		List<Host> hosts = gerarHosts(quantidadeHosts, taxaDePacotes);
-
-		// tempo necessário para transmitir o frame por completo
-		BigDecimal tempoTransmissao = valueOf(Simulacao.BITS_POR_PACOTE).divide(valueOf(larguraDeBanda), PRECISAO);
-		BigDecimal tempoInterframe = valueOf(BITS_INTERFRAME).divide(valueOf(larguraDeBanda), PRECISAO);
+	private static List<Host> simularCsmaCd(double taxaDePacotes) {
+		List<Host> hosts = gerarHosts(taxaDePacotes);
 
 		while (true) {
 			Host hostProximoPacote = getHostProximoPacote(hosts);
@@ -49,58 +52,63 @@ public class Simulacao {
 
 			BigDecimal tempoProximoPacote = proximoPacote.getTempo();
 
-			boolean hasColisao = false;
+			Host host = getOutroHost(hosts, hostProximoPacote);
 
-			for (Host host : hosts) {
-				if (host == hostProximoPacote) continue;
+			BigDecimal tempoColisao = validarColisao(host, tempoProximoPacote);
 
-				Pacote pacoteHost = host.getPacotes().peek();
-
-				// não há possibilidade de colisão quando sem pacotes
-				if (pacoteHost == null) continue;
-
-				double distancia = abs(hostProximoPacote.getPosicaoBarramento() - host.getPosicaoBarramento());
-
-				// tempo que um símbolo demora a chegar até o host
-				BigDecimal tempoPropagacao = valueOf(distancia).divide(VELOCIDADE_DE_PROPAGACAO_DO_MEIO, PRECISAO);
-				// tempo de chegada do primeiro símbolo de informação
-				BigDecimal tempoDeteccao = tempoProximoPacote.add(tempoPropagacao);
-				BigDecimal tempoConclusaoPacote = tempoDeteccao.add(tempoTransmissao);
-
-				BigDecimal tempoPacoteHost = pacoteHost.getTempo();
-
-				// host vai ser capaz de identificar que meio está ocupado e vai atrasar envio, bufferizando pacotes
-				if (isDetectavelAndHasInterseccao(tempoPacoteHost, tempoConclusaoPacote, tempoDeteccao)) {
-					for (Pacote pacote : host.getPacotes()) {
-						if (isDetectavelAndHasInterseccao(pacote.getTempo(), tempoConclusaoPacote, tempoDeteccao)) {
-							pacote.setTempo(tempoConclusaoPacote);
-						}
-					}
-				}
-
-				// host não será capaz de identificar pacote
-				if (tempoPacoteHost.compareTo(tempoDeteccao) <= 0) {
-					hasColisao = true;
-					host.onColisao(larguraDeBanda);
-				}
-			}
-
-			// apenas para métricas
-			tempoDeConclusao = tempoProximoPacote.add(tempoTransmissao);
-			quantidadesDePacotes++;
-
-			if (!hasColisao) {
+			if (tempoColisao == null) {
 				hostProximoPacote.onSucesso();
 
-				BigDecimal tempoMinimoProximosPacotes = tempoProximoPacote.add(tempoTransmissao).add(tempoInterframe);
+				BigDecimal tempoMinimoProximosPacotes = tempoProximoPacote.add(TEMPO_TRANSMISSAO).add(TEMPO_INTERFRAME);
 
 				// atrasa os próximos pacotes para contemplar tempo inteframe
 				atualizarPacote(hostProximoPacote, tempoMinimoProximosPacotes);
 			} else {
-				hostProximoPacote.onColisao(larguraDeBanda);
+				hostProximoPacote.onColisao(VAZAO, tempoColisao);
+			}
+
+			// apenas para métricas
+			tempoDeConclusao = tempoProximoPacote.add(TEMPO_TRANSMISSAO);
+			quantidadesDePacotes++;
+		}
+
+		return hosts;
+	}
+
+	private static Host getOutroHost(List<Host> hosts, Host hostProximoPacote) {
+		return hosts.stream().filter(
+				h -> h.getPosicaoBarramento() != hostProximoPacote.getPosicaoBarramento()
+		).findFirst().orElseThrow();
+	}
+
+	private static BigDecimal validarColisao(Host host, BigDecimal tempoProximoPacote) {
+		Pacote pacoteHost = host.getPacotes().peek();
+
+		// não há possibilidade de colisão quando sem pacotes
+		if (pacoteHost == null) return null;
+
+		// tempo de chegada do primeiro símbolo de informação
+		BigDecimal tempoDeteccao = tempoProximoPacote.add(TEMPO_PROPAGACAO);
+		BigDecimal tempoConclusaoPacote = tempoDeteccao.add(TEMPO_TRANSMISSAO);
+
+		BigDecimal tempoPacoteHost = pacoteHost.getTempo();
+
+		// host vai ser capaz de identificar que meio está ocupado e vai atrasar envio, bufferizando pacotes
+		if (isDetectavelAndHasInterseccao(tempoPacoteHost, tempoConclusaoPacote, tempoDeteccao)) {
+			for (Pacote pacote : host.getPacotes()) {
+				if (isDetectavelAndHasInterseccao(pacote.getTempo(), tempoConclusaoPacote, tempoDeteccao)) {
+					pacote.setTempo(tempoConclusaoPacote);
+				}
 			}
 		}
-		return hosts;
+
+		// host não será capaz de identificar pacote
+		if (tempoPacoteHost.compareTo(tempoDeteccao) <= 0) {
+			host.onColisao(VAZAO, tempoDeteccao);
+			return tempoPacoteHost.add(TEMPO_TRANSMISSAO);
+		}
+
+		return null;
 	}
 
 	private static void atualizarPacote(Host hostProximoPacote, BigDecimal tempoMinimo) {
@@ -137,10 +145,8 @@ public class Simulacao {
 
 	public static void main(String[] args) {
 		// 10 megabits por segundo
-		double larguraDeBanda = 1e7;
-		int numeroDeHosts = 2;
 		int pacotesPorSegundo = 9000;
-		List<Host> hosts = simularCsmaCd(numeroDeHosts, pacotesPorSegundo, larguraDeBanda);
+		List<Host> hosts = simularCsmaCd(pacotesPorSegundo);
 
 		for (int i = 0; i < hosts.size(); i++) {
 			Host host = hosts.get(i);
