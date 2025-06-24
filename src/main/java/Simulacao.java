@@ -51,16 +51,15 @@ public class Simulacao {
 			// não há mais pacotes a serem transmitidos
 			if (proximoPacote == null) break;
 
-			BigDecimal tempoProximoPacote = proximoPacote.getTempo();
+			// adiciona o tempo de espera mínimo especificado para Ethernet
+			BigDecimal tempoProximoPacote = proximoPacote.getTempo().add(TEMPO_INTERFRAME);
 
 			BigDecimal tempoColisao = validarColisao(getOutroHost(hosts, hostProximoPacote), tempoProximoPacote);
 
 			if (tempoColisao == null) {
 				hostProximoPacote.onSucesso();
-
-				BigDecimal tempoMinimoProximosPacotes = tempoProximoPacote.add(TEMPO_TRANSMISSAO).add(TEMPO_INTERFRAME);
-
-				// atrasa os próximos pacotes para contemplar tempo inteframe
+				// limita sobreposição de pacotes do mesmo host
+				BigDecimal tempoMinimoProximosPacotes = tempoProximoPacote.add(TEMPO_TRANSMISSAO);
 				atualizarPacote(hostProximoPacote, tempoMinimoProximosPacotes);
 			} else {
 				// considera tempo de transmissão do JAM, pois é necessário ser concluído
@@ -90,8 +89,7 @@ public class Simulacao {
 		BigDecimal tempoDeteccao = tempoProximoPacote.add(TEMPO_PROPAGACAO);
 		BigDecimal tempoConclusaoPacote = tempoDeteccao.add(TEMPO_TRANSMISSAO);
 
-		BigDecimal tempoPacoteHost = pacoteHost.getTempo();
-		// considera tempo de transmissão do JAM, pois é necessário ser concluído
+		BigDecimal tempoPacoteHost = pacoteHost.getTempo().add(TEMPO_INTERFRAME);
 
 		// host vai ser capaz de identificar que meio está ocupado e vai atrasar envio, bufferizando pacotes
 		if (isDetectavelAndHasInterseccao(tempoPacoteHost, tempoConclusaoPacote, tempoDeteccao)) {
@@ -102,8 +100,9 @@ public class Simulacao {
 			}
 		}
 
-		// host não será capaz de identificar pacote
+		// host não será capaz de detectar a portadora
 		if (tempoPacoteHost.compareTo(tempoDeteccao) <= 0) {
+			// considera tempo de transmissão do JAM, pois é necessário ser concluído
 			host.onColisao(VAZAO, tempoDeteccao.add(TEMPO_JAM));
 			return tempoPacoteHost.add(TEMPO_PROPAGACAO).add(TEMPO_JAM);
 		}
@@ -145,25 +144,21 @@ public class Simulacao {
 
 	public static void main(String[] args) {
 		// 10 megabits por segundo
-		int pacotesPorSegundo = 4000;
+		int pacotesPorSegundo = 2000;
 		int duracao = 1;
 		List<Host> hosts = simularCsmaCd(pacotesPorSegundo, duracao);
-		int somaDePacotes = 0;
 
 		for (int i = 0; i < hosts.size(); i++) {
 			Host host = hosts.get(i);
 			int quantidadePacotes = host.getQuantidadePacotes();
-			somaDePacotes += quantidadePacotes;
 			int quantidadeColisoes = host.getQuantidadeColisoes();
 			System.out.printf("Host %d - Quantidade de pacotes: %d.\n", i, quantidadePacotes);
 			System.out.printf("Host %d - Quantidade de colisões: %d.\n", i, quantidadeColisoes);
 			System.out.printf("Host %d - Quantidade de colisões por pacote: %.2f\n", i, (float) quantidadeColisoes / (float) quantidadePacotes);
 			System.out.printf("Host %d - Taxa de erro: %.2f%%.\n", i, ((float) host.getPacotesPerdidos() / (float) quantidadePacotes) * 100.0);
-			System.out.printf("Host %d - Delay médio: %.8fs.\n", i, host.getTempoMedioDelay() * pow(10, 6));
+			System.out.printf("Host %d - Delay médio: %.8fus.\n", i, host.getTempoMedioDelay() * pow(10, 6));
 		}
 
-		BigDecimal bitsPorSegundo = valueOf(BITS_POR_PACOTE).multiply(valueOf(somaDePacotes)).divide(tempoDeConclusao, PRECISAO);
-		System.out.printf("Throughput: %.2f Mbps\n", bitsPorSegundo.multiply(valueOf(pow(10, -6))).doubleValue());
 		System.out.println("tempoDeConclusao = " + tempoDeConclusao);
 	}
 
