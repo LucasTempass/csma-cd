@@ -17,7 +17,7 @@ public class Simulacao {
 	public static final int BITS_POR_PACOTE = 512;
 	public static final int BITS_INTERFRAME = 96;
 
-	private static double tempoDeConclusao = 0.0;
+	private static BigDecimal tempoDeConclusao = BigDecimal.ZERO;
 	private static double quantidadesDePacotes = 0.0;
 
 	private static List<Host> gerarHosts(int quantidade, double taxaDePacotes) {
@@ -86,7 +86,7 @@ public class Simulacao {
 			}
 
 			// apenas para métricas
-			tempoDeConclusao = tempoProximoPacote.byteValue();
+			tempoDeConclusao = tempoProximoPacote.add(tempoTransmissao);
 			quantidadesDePacotes++;
 
 			if (!hasColisao) {
@@ -150,11 +150,12 @@ public class Simulacao {
 			System.out.printf("Host %d - Quantidade de colisões: %d.\n", i, quantidadeColisoes);
 			System.out.printf("Host %d - Quantidade de colisões por pacote: %.2f\n", i, (float) quantidadeColisoes / (float) quantidadePacotes);
 			System.out.printf("Host %d - Taxa de erro: %.2f%%.\n", i, ((float) host.getPacotesPerdidos() / (float) quantidadePacotes) * 100.0);
-			System.out.printf("Host %d - Delay médio: %.8fs.\n", i, host.getTempoMedioDelay());
+			System.out.printf("Host %d - Delay médio: %.8fs.\n", i, host.getTempoMedioDelay() * pow(10, 6));
 		}
 
-		double bitsPorSegundo = (BITS_POR_PACOTE * quantidadesDePacotes) / tempoDeConclusao;
-		System.out.printf("Throughput: %.2f Mbps\n", bitsPorSegundo * pow(10, -6));
+		BigDecimal bitsPorSegundo = valueOf(BITS_POR_PACOTE).multiply(valueOf(quantidadesDePacotes)).divide(tempoDeConclusao, PRECISAO);
+		System.out.printf("Throughput: %.2f Mbps\n", bitsPorSegundo.multiply(valueOf(pow(10, -6))).doubleValue());
+		System.out.println("tempoDeConclusao = " + tempoDeConclusao);
 	}
 
 }
