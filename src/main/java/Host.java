@@ -59,10 +59,12 @@ public class Host {
 		List<Pacote> pacotes = new ArrayList<>();
 		double tempoAtual = 0;
 		BigDecimal tempoTransmissao = valueOf(Simulacao.BITS_POR_PACOTE).divide(valueOf(1e7), DECIMAL128);
+		int id = 1;
 
 		while (tempoAtual <= duracao) {
 			tempoAtual += max(tempoTransmissao.doubleValue(), getValorAleatorioConformeTaxa(taxaDePacotes));
-			pacotes.add(new Pacote(tempoAtual));
+			pacotes.add(new Pacote(tempoAtual,id));
+			id++;
 		}
 
 		Collections.sort(pacotes);
@@ -79,7 +81,7 @@ public class Host {
 		// intervalo de [0, N[
 		double slot = Math.random() * quantidadeSlots;
 		// tamanho mínimo do frame de 512 bits (64 bytes)
-		return valueOf(slot * 512).divide(valueOf(larguraDeBanda));
+		return valueOf(slot * 512).divide(valueOf(larguraDeBanda), DECIMAL128);
 	}
 
 	private Pacote removerPacote() {
