@@ -5,16 +5,15 @@ import java.util.List;
 
 import static java.lang.Math.pow;
 import static java.math.BigDecimal.valueOf;
+import static java.math.MathContext.DECIMAL128;
 
 public class Simulacao {
 
 	private static final int COMPRIMENTO_BARRAMENTO = 100;
 	private static final BigDecimal VELOCIDADE_DA_LUZ = new BigDecimal("3E8");
 	private static final BigDecimal VELOCIDADE_DE_PROPAGACAO_DO_MEIO = VELOCIDADE_DA_LUZ.multiply(new BigDecimal("0.66"));
-	private static final double DURACAO_EM_SEGUNDOS = 1;
-	private static final MathContext PRECISAO = MathContext.DECIMAL128;
+	private static final MathContext PRECISAO = DECIMAL128;
 	public static final int BITS_POR_PACOTE = 512;
-	public static final int BITS_INTERFRAME = 96;
 	private static final double VAZAO = 1e7;
 	private static final int DISTANCIA_ENTRE_HOSTS = 100;
 
@@ -22,22 +21,25 @@ public class Simulacao {
 	private static final BigDecimal TEMPO_PROPAGACAO = valueOf(DISTANCIA_ENTRE_HOSTS).divide(VELOCIDADE_DE_PROPAGACAO_DO_MEIO, PRECISAO);
 	// tempo necessário para transmitir o frame por completo
 	private static final BigDecimal TEMPO_TRANSMISSAO = valueOf(Simulacao.BITS_POR_PACOTE).divide(valueOf(VAZAO), PRECISAO);
-	private static final BigDecimal TEMPO_INTERFRAME = valueOf(BITS_INTERFRAME).divide(valueOf(VAZAO), PRECISAO);
+	// 8 bytes de interframe
+	private static final BigDecimal TEMPO_INTERFRAME = valueOf(96).divide(valueOf(VAZAO), PRECISAO);
+	// 4 bytes de jam
+	private static final BigDecimal TEMPO_JAM = valueOf(32).divide(valueOf(VAZAO), PRECISAO);
 
 	private static BigDecimal tempoDeConclusao = BigDecimal.ZERO;
 	private static double quantidadesDePacotes = 0.0;
 
-	private static List<Host> gerarHosts(double taxaDePacotes) {
+	private static List<Host> gerarHosts(double taxaDePacotes, int duracao) {
 		List<Host> hosts = new ArrayList<>();
 		double distanciaEntreHosts = COMPRIMENTO_BARRAMENTO / Math.pow(2, 0);
 		for (int i = 0; i < 2; i++) {
-			hosts.add(new Host(i * distanciaEntreHosts, taxaDePacotes, DURACAO_EM_SEGUNDOS));
+			hosts.add(new Host(i * distanciaEntreHosts, taxaDePacotes, duracao));
 		}
 		return hosts;
 	}
 
-	private static List<Host> simularCsmaCd(double taxaDePacotes) {
-		List<Host> hosts = gerarHosts(taxaDePacotes);
+	private static List<Host> simularCsmaCd(double taxaDePacotes, int duracao) {
+		List<Host> hosts = gerarHosts(taxaDePacotes, duracao);
 
 		while (true) {
 			Host hostProximoPacote = getHostProximoPacote(hosts);
@@ -64,6 +66,7 @@ public class Simulacao {
 				// atrasa os próximos pacotes para contemplar tempo inteframe
 				atualizarPacote(hostProximoPacote, tempoMinimoProximosPacotes);
 			} else {
+				// considera tempo de transmissão do JAM, pois é necessário ser concluído
 				hostProximoPacote.onColisao(VAZAO, tempoColisao);
 			}
 
@@ -92,6 +95,7 @@ public class Simulacao {
 		BigDecimal tempoConclusaoPacote = tempoDeteccao.add(TEMPO_TRANSMISSAO);
 
 		BigDecimal tempoPacoteHost = pacoteHost.getTempo();
+		// considera tempo de transmissão do JAM, pois é necessário ser concluído
 
 		// host vai ser capaz de identificar que meio está ocupado e vai atrasar envio, bufferizando pacotes
 		if (isDetectavelAndHasInterseccao(tempoPacoteHost, tempoConclusaoPacote, tempoDeteccao)) {
@@ -104,8 +108,8 @@ public class Simulacao {
 
 		// host não será capaz de identificar pacote
 		if (tempoPacoteHost.compareTo(tempoDeteccao) <= 0) {
-			host.onColisao(VAZAO, tempoDeteccao);
-			return tempoPacoteHost.add(TEMPO_TRANSMISSAO);
+			host.onColisao(VAZAO, tempoDeteccao.add(TEMPO_JAM));
+			return tempoPacoteHost.add(TEMPO_PROPAGACAO).add(TEMPO_JAM);
 		}
 
 		return null;
@@ -145,8 +149,9 @@ public class Simulacao {
 
 	public static void main(String[] args) {
 		// 10 megabits por segundo
-		int pacotesPorSegundo = 9000;
-		List<Host> hosts = simularCsmaCd(pacotesPorSegundo);
+		int pacotesPorSegundo = 4000;
+		int duracao = 1;
+		List<Host> hosts = simularCsmaCd(pacotesPorSegundo, duracao);
 
 		for (int i = 0; i < hosts.size(); i++) {
 			Host host = hosts.get(i);
