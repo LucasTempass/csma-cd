@@ -15,10 +15,9 @@ public class Simulacao {
 	private static final MathContext PRECISAO = DECIMAL128;
 	public static final int BITS_POR_PACOTE = 512;
 	private static final double VAZAO = 1e7;
-	private static final int DISTANCIA_ENTRE_HOSTS = 100;
 
 	// tempo que um símbolo demora a chegar até o host
-	private static final BigDecimal TEMPO_PROPAGACAO = valueOf(DISTANCIA_ENTRE_HOSTS).divide(VELOCIDADE_DE_PROPAGACAO_DO_MEIO, PRECISAO);
+	private static final BigDecimal TEMPO_PROPAGACAO = valueOf(COMPRIMENTO_BARRAMENTO).divide(VELOCIDADE_DE_PROPAGACAO_DO_MEIO, PRECISAO);
 	// tempo necessário para transmitir o frame por completo
 	private static final BigDecimal TEMPO_TRANSMISSAO = valueOf(Simulacao.BITS_POR_PACOTE).divide(valueOf(VAZAO), PRECISAO);
 	// 8 bytes de interframe
@@ -27,7 +26,6 @@ public class Simulacao {
 	private static final BigDecimal TEMPO_JAM = valueOf(32).divide(valueOf(VAZAO), PRECISAO);
 
 	private static BigDecimal tempoDeConclusao = BigDecimal.ZERO;
-	private static double quantidadesDePacotes = 0.0;
 
 	private static List<Host> gerarHosts(double taxaDePacotes, int duracao) {
 		List<Host> hosts = new ArrayList<>();
@@ -54,9 +52,7 @@ public class Simulacao {
 
 			BigDecimal tempoProximoPacote = proximoPacote.getTempo();
 
-			Host host = getOutroHost(hosts, hostProximoPacote);
-
-			BigDecimal tempoColisao = validarColisao(host, tempoProximoPacote);
+			BigDecimal tempoColisao = validarColisao(getOutroHost(hosts, hostProximoPacote), tempoProximoPacote);
 
 			if (tempoColisao == null) {
 				hostProximoPacote.onSucesso();
@@ -72,7 +68,6 @@ public class Simulacao {
 
 			// apenas para métricas
 			tempoDeConclusao = tempoProximoPacote.add(TEMPO_TRANSMISSAO);
-			quantidadesDePacotes++;
 		}
 
 		return hosts;
@@ -152,10 +147,12 @@ public class Simulacao {
 		int pacotesPorSegundo = 4000;
 		int duracao = 1;
 		List<Host> hosts = simularCsmaCd(pacotesPorSegundo, duracao);
+		int somaDePacotes = 0;
 
 		for (int i = 0; i < hosts.size(); i++) {
 			Host host = hosts.get(i);
 			int quantidadePacotes = host.getQuantidadePacotes();
+			somaDePacotes += quantidadePacotes;
 			int quantidadeColisoes = host.getQuantidadeColisoes();
 			System.out.printf("Host %d - Quantidade de pacotes: %d.\n", i, quantidadePacotes);
 			System.out.printf("Host %d - Quantidade de colisões: %d.\n", i, quantidadeColisoes);
@@ -164,7 +161,7 @@ public class Simulacao {
 			System.out.printf("Host %d - Delay médio: %.8fs.\n", i, host.getTempoMedioDelay() * pow(10, 6));
 		}
 
-		BigDecimal bitsPorSegundo = valueOf(BITS_POR_PACOTE).multiply(valueOf(quantidadesDePacotes)).divide(tempoDeConclusao, PRECISAO);
+		BigDecimal bitsPorSegundo = valueOf(BITS_POR_PACOTE).multiply(valueOf(somaDePacotes)).divide(tempoDeConclusao, PRECISAO);
 		System.out.printf("Throughput: %.2f Mbps\n", bitsPorSegundo.multiply(valueOf(pow(10, -6))).doubleValue());
 		System.out.println("tempoDeConclusao = " + tempoDeConclusao);
 	}
