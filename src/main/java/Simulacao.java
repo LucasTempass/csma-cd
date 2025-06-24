@@ -13,7 +13,8 @@ public class Simulacao {
 	private static final BigDecimal VELOCIDADE_DA_LUZ = new BigDecimal("3E8");
 	private static final BigDecimal VELOCIDADE_DE_PROPAGACAO_DO_MEIO = VELOCIDADE_DA_LUZ.multiply(new BigDecimal("0.66"));
 	private static final MathContext PRECISAO = DECIMAL128;
-	public static final int BITS_POR_PACOTE = 512;
+	// 64 bytes + 8 bits de Preâmbulo
+	public static final int BITS_POR_PACOTE = 520;
 	private static final double VAZAO = 1e7;
 
 	// tempo que um símbolo demora a chegar até o host
