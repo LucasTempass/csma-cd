@@ -1,9 +1,11 @@
 import java.math.BigDecimal;
+import java.text.MessageFormat;
 import java.util.*;
 
 import static java.lang.Math.max;
 import static java.math.BigDecimal.valueOf;
 import static java.math.MathContext.DECIMAL128;
+import static java.text.MessageFormat.format;
 
 public class Host {
 	private final static int MAX_COLISOES = 16;
@@ -17,16 +19,20 @@ public class Host {
 	private final int quantidadePacotes;
 	private int quantidadeFalhas;
 	private int quantidadeColisoes;
+	private final int id;
 
-	public Host(double posicaoBarramento, double taxaDePacotes, double duracao) {
+	public Host(double posicaoBarramento, double taxaDePacotes, double duracao, int id) {
 		this.posicaoBarramento = posicaoBarramento;
 		this.pacotes = new LinkedList<>(gerarPacotes(taxaDePacotes, duracao));
 		this.quantidadePacotes = pacotes.size();
 		this.colisoes = 0;
 		this.pacotesTransmitidos = new ArrayList<>();
+		this.id = id;
 	}
 
 	public void onColisao(double larguraDeBanda, BigDecimal tempo) {
+		System.out.printf("Host %d detectou colisão no tempo %s.%n", id, tempo);
+
 		quantidadeColisoes++;
 
 		colisoes++;
@@ -41,7 +47,10 @@ public class Host {
 
 		if (pacote == null) return;
 
-		BigDecimal tempoBackoff = tempo.add(getTempoBackoffExponencial(larguraDeBanda, colisoes));
+		BigDecimal tempoBackoffExponencial = getTempoBackoffExponencial(larguraDeBanda, colisoes);
+		System.out.println(format("Host {0} aplicando backoff exponencial de {1} us.", id, tempoBackoffExponencial.multiply(valueOf(10e6))));
+		BigDecimal tempoBackoff = tempo.add(tempoBackoffExponencial);
+
 
 		// atrasa envio dos pacotes previstos, imitando um comportamento de buffer
 		for (Pacote p : pacotes) {
@@ -63,7 +72,7 @@ public class Host {
 
 		while (tempoAtual <= duracao) {
 			tempoAtual += max(tempoTransmissao.doubleValue(), getValorAleatorioConformeTaxa(taxaDePacotes));
-			pacotes.add(new Pacote(tempoAtual,id));
+			pacotes.add(new Pacote(tempoAtual, id));
 			id++;
 		}
 
@@ -105,13 +114,16 @@ public class Host {
 		return quantidadeColisoes;
 	}
 
-
 	public int getPacotesPerdidos() {
 		return quantidadeFalhas;
 	}
 
 	public double getTempoMedioDelay() {
 		return pacotesTransmitidos.stream().mapToDouble(Pacote::getDelay).average().orElse(0);
+	}
+
+	public int getId() {
+		return id;
 	}
 
 }

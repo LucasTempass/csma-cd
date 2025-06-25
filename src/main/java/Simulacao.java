@@ -32,7 +32,7 @@ public class Simulacao {
 		List<Host> hosts = new ArrayList<>();
 		double distanciaEntreHosts = COMPRIMENTO_BARRAMENTO / Math.pow(2, 0);
 		for (int i = 0; i < 2; i++) {
-			hosts.add(new Host(i * distanciaEntreHosts, taxaDePacotes, duracao));
+			hosts.add(new Host(i * distanciaEntreHosts, taxaDePacotes, duracao, i + 1));
 		}
 		return hosts;
 	}
@@ -41,33 +41,38 @@ public class Simulacao {
 		List<Host> hosts = gerarHosts(taxaDePacotes, duracao);
 
 		while (true) {
-			Host hostProximoPacote = getHostProximoPacote(hosts);
+			Host hostOrigem = getHostProximoPacote(hosts);
 
 			// não há mais pacotes a serem transmitidos
-			if (hostProximoPacote == null) break;
+			if (hostOrigem == null) break;
 
-			Pacote proximoPacote = hostProximoPacote.getPacotes().peek();
+			Pacote proximoPacote = hostOrigem.getPacotes().peek();
 
 			// não há mais pacotes a serem transmitidos
 			if (proximoPacote == null) break;
 
 			// adiciona o tempo de espera mínimo especificado para Ethernet
-			BigDecimal tempoProximoPacote = proximoPacote.getTempo().add(TEMPO_INTERFRAME);
+			BigDecimal tempoInicioTransmissao = proximoPacote.getTempo().add(TEMPO_INTERFRAME);
 
-			BigDecimal tempoColisao = validarColisao(getOutroHost(hosts, hostProximoPacote), tempoProximoPacote);
+			System.out.printf("Enviando pacote %d do host %d no tempo %s...%n", proximoPacote.getId(), hostOrigem.getId(), tempoInicioTransmissao);
+
+			Host hostDestino = getOutroHost(hosts, hostOrigem);
+
+			BigDecimal tempoColisao = validarColisao(hostDestino, tempoInicioTransmissao);
 
 			if (tempoColisao == null) {
-				hostProximoPacote.onSucesso();
+				System.out.printf("Host %d transmitiu pacote %d com sucesso no tempo %s.%n", hostOrigem.getId(), proximoPacote.getId(), tempoDeConclusao);
+				hostOrigem.onSucesso();
 				// limita sobreposição de pacotes do mesmo host
-				BigDecimal tempoMinimoProximosPacotes = tempoProximoPacote.add(TEMPO_TRANSMISSAO);
-				atualizarPacote(hostProximoPacote, tempoMinimoProximosPacotes);
+				BigDecimal tempoMinimoProximosPacotes = tempoInicioTransmissao.add(TEMPO_TRANSMISSAO);
+				atualizarPacote(hostOrigem, tempoMinimoProximosPacotes);
 			} else {
 				// considera tempo de transmissão do JAM, pois é necessário ser concluído
-				hostProximoPacote.onColisao(VAZAO, tempoColisao);
+				hostOrigem.onColisao(VAZAO, tempoColisao);
 			}
 
 			// apenas para métricas
-			tempoDeConclusao = tempoProximoPacote.add(TEMPO_TRANSMISSAO);
+			tempoDeConclusao = tempoInicioTransmissao.add(TEMPO_PROPAGACAO).add(TEMPO_TRANSMISSAO);
 		}
 
 		return hosts;
@@ -107,6 +112,8 @@ public class Simulacao {
 			return tempoPacoteHost.add(TEMPO_PROPAGACAO).add(TEMPO_JAM);
 		}
 
+		System.out.println("Host " + host.getId() + " recebeu pacote " + pacoteHost.getId() + " no tempo " + tempoConclusaoPacote);
+
 		return null;
 	}
 
@@ -144,10 +151,11 @@ public class Simulacao {
 
 	public static void main(String[] args) {
 		// 10 megabits por segundo
-		int pacotesPorSegundo = 2000;
+		int pacotesPorSegundo = 8000;
 		int duracao = 1;
 		List<Host> hosts = simularCsmaCd(pacotesPorSegundo, duracao);
 
+		System.out.println("\n\n\nResultados da simulação:\n");
 		for (int i = 0; i < hosts.size(); i++) {
 			Host host = hosts.get(i);
 			int quantidadePacotes = host.getQuantidadePacotes();
