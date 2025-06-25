@@ -54,14 +54,11 @@ public class Simulacao {
 			// adiciona o tempo de espera mínimo especificado para Ethernet
 			BigDecimal tempoInicioTransmissao = proximoPacote.getTempo().add(TEMPO_INTERFRAME);
 
-			System.out.printf("Enviando pacote %d do host %d no tempo %s...%n", proximoPacote.getId(), hostOrigem.getId(), tempoInicioTransmissao);
-
 			Host hostDestino = getOutroHost(hosts, hostOrigem);
 
 			BigDecimal tempoColisao = validarColisao(hostDestino, tempoInicioTransmissao);
 
 			if (tempoColisao == null) {
-				System.out.printf("Host %d transmitiu pacote %d com sucesso no tempo %s.%n", hostOrigem.getId(), proximoPacote.getId(), tempoDeConclusao);
 				hostOrigem.onSucesso();
 				// limita sobreposição de pacotes do mesmo host
 				BigDecimal tempoMinimoProximosPacotes = tempoInicioTransmissao.add(TEMPO_TRANSMISSAO);
@@ -111,8 +108,6 @@ public class Simulacao {
 			host.onColisao(VAZAO, tempoDeteccao.add(TEMPO_JAM));
 			return tempoPacoteHost.add(TEMPO_PROPAGACAO).add(TEMPO_JAM);
 		}
-
-		System.out.println("Host " + host.getId() + " recebeu pacote " + pacoteHost.getId() + " no tempo " + tempoConclusaoPacote);
 
 		return null;
 	}
