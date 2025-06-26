@@ -55,8 +55,7 @@ public class Host {
 
 	public void onSucesso(BigDecimal tempoInicioTransmissao, BigDecimal tempoDeConclusaoTransmissao) {
 		Pacote pacote = removerPacote();
-		pacote.setTempoConclusao(tempoDeConclusaoTransmissao);
-		pacote.setTempoInicio(tempoInicioTransmissao);
+		pacote.adicionarSucesso(tempoInicioTransmissao, tempoDeConclusaoTransmissao);
 		pacotesTransmitidos.add(pacote);
 	}
 

@@ -1,10 +1,13 @@
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Pacote implements Comparable<Pacote> {
 
 	private final BigDecimal tempoPrevisto;
-	private BigDecimal tempoInicio;
-	private BigDecimal tempoConclusao;
+	private final List<BigDecimal> temposInicio = new ArrayList<>();
+	private final List<BigDecimal> temposConclusao = new ArrayList<>();
+	private final List<Tentativa> tentativas = new ArrayList<>();
 	private BigDecimal tempoColisao;
 	private BigDecimal tempo;
 	private final Host host;
@@ -38,32 +41,29 @@ public class Pacote implements Comparable<Pacote> {
 		return this.tempo.compareTo(o.tempo);
 	}
 
-	public BigDecimal getTempoInicio() {
-		return tempoInicio;
-	}
-
-	public void setTempoInicio(BigDecimal tempoInicio) {
-		this.tempoInicio = tempoInicio;
-	}
-
-	public BigDecimal getTempoConclusao() {
-		return tempoConclusao;
-	}
-
-	public void setTempoConclusao(BigDecimal tempoConclusao) {
-		this.tempoConclusao = tempoConclusao;
-	}
-
 	public Host getHost() {
 		return host;
 	}
 
-	public BigDecimal getTempoColisao() {
-		return tempoColisao;
+	public void removerTentativa() {
+		if (tentativas.isEmpty()) return;
+		tentativas.removeFirst();
 	}
 
-	public void setTempoColisao(BigDecimal tempoColisao) {
-		this.tempoColisao = tempoColisao;
+	public void adicionarSucesso(BigDecimal tempoInicio, BigDecimal tempoConclusao) {
+		this.tentativas.add(new Tentativa(tempoInicio, tempoConclusao, false));
+	}
+
+	public void adicionarFalha(BigDecimal tempoInicio, BigDecimal tempoConclusao) {
+		this.tentativas.add(new Tentativa(tempoInicio, tempoConclusao, true));
+	}
+
+	public List<Tentativa> getTentativas() {
+		return tentativas;
+	}
+
+	public Tentativa getTentativa() {
+		return tentativas.stream().findFirst().orElse(null);
 	}
 
 }
