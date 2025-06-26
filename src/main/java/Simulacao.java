@@ -1,6 +1,7 @@
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static java.lang.Math.pow;
@@ -26,11 +27,9 @@ public class Simulacao {
 	// 4 bytes de jam
 	private static final BigDecimal TEMPO_JAM = valueOf(32).divide(valueOf(VAZAO), PRECISAO);
 
-	private static BigDecimal tempoDeConclusao = BigDecimal.ZERO;
-
 	private static List<Host> gerarHosts(double taxaDePacotes, int duracao) {
 		List<Host> hosts = new ArrayList<>();
-		double distanciaEntreHosts = COMPRIMENTO_BARRAMENTO / Math.pow(2, 0);
+		double distanciaEntreHosts = COMPRIMENTO_BARRAMENTO / pow(2, 0);
 		for (int i = 0; i < 2; i++) {
 			hosts.add(new Host(i * distanciaEntreHosts, taxaDePacotes, duracao, i + 1));
 		}
@@ -53,13 +52,14 @@ public class Simulacao {
 
 			// adiciona o tempo de espera mínimo especificado para Ethernet
 			BigDecimal tempoInicioTransmissao = proximoPacote.getTempo().add(TEMPO_INTERFRAME);
+			BigDecimal tempoDeConclusaoTransmissao = tempoInicioTransmissao.add(TEMPO_PROPAGACAO).add(TEMPO_TRANSMISSAO);
 
 			Host hostDestino = getOutroHost(hosts, hostOrigem);
 
 			BigDecimal tempoColisao = validarColisao(hostDestino, tempoInicioTransmissao);
 
 			if (tempoColisao == null) {
-				hostOrigem.onSucesso();
+				hostOrigem.onSucesso(tempoInicioTransmissao, tempoDeConclusaoTransmissao);
 				// limita sobreposição de pacotes do mesmo host
 				BigDecimal tempoMinimoProximosPacotes = tempoInicioTransmissao.add(TEMPO_TRANSMISSAO);
 				atualizarPacote(hostOrigem, tempoMinimoProximosPacotes);
@@ -67,18 +67,13 @@ public class Simulacao {
 				// considera tempo de transmissão do JAM, pois é necessário ser concluído
 				hostOrigem.onColisao(VAZAO, tempoColisao);
 			}
-
-			// apenas para métricas
-			tempoDeConclusao = tempoInicioTransmissao.add(TEMPO_PROPAGACAO).add(TEMPO_TRANSMISSAO);
 		}
 
 		return hosts;
 	}
 
 	private static Host getOutroHost(List<Host> hosts, Host hostProximoPacote) {
-		return hosts.stream().filter(
-				h -> h.getPosicaoBarramento() != hostProximoPacote.getPosicaoBarramento()
-		).findFirst().orElseThrow();
+		return hosts.stream().filter(h -> h.getPosicaoBarramento() != hostProximoPacote.getPosicaoBarramento()).findFirst().orElseThrow();
 	}
 
 	private static BigDecimal validarColisao(Host host, BigDecimal tempoProximoPacote) {
@@ -144,11 +139,13 @@ public class Simulacao {
 		return hostProximoPacote;
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 		// 10 megabits por segundo
 		int pacotesPorSegundo = 8000;
 		int duracao = 1;
 		List<Host> hosts = simularCsmaCd(pacotesPorSegundo, duracao);
+
+		visualizarPacotes(hosts);
 
 		System.out.println("\n\n\nResultados da simulação:\n");
 		for (int i = 0; i < hosts.size(); i++) {
@@ -161,8 +158,61 @@ public class Simulacao {
 			System.out.printf("Host %d - Taxa de erro: %.2f%%.\n", i, ((float) host.getPacotesPerdidos() / (float) quantidadePacotes) * 100.0);
 			System.out.printf("Host %d - Delay médio: %.8fus.\n", i, host.getTempoMedioDelay() * pow(10, 6));
 		}
+	}
 
-		System.out.println("tempoDeConclusao = " + tempoDeConclusao);
+	private static void visualizarPacotes(List<Host> hosts) throws InterruptedException {
+		List<Pacote> pacotes = new ArrayList<>();
+
+		for (Host host : hosts) {
+			pacotes.addAll(host.getPacotesTransmitidos());
+		}
+
+		pacotes.sort(Pacote::compareTo);
+
+		BigDecimal tempoAtual = BigDecimal.ZERO;
+
+		String[] barramento = new String[COMPRIMENTO_BARRAMENTO];
+
+		while (!pacotes.isEmpty()) {
+			List<Pacote> pacotesSendoTransmitidos = new ArrayList<>();
+
+			for (Pacote pacote : pacotes) {
+				if (pacote.getTempoInicio().compareTo(tempoAtual) <= 0) {
+					if (pacote.getTempoConclusao().compareTo(tempoAtual) <= 0) {
+						// transmissão já concluída
+						pacotes.remove(pacote);
+					} else {
+						pacotesSendoTransmitidos.add(pacote);
+					}
+				}
+			}
+
+			Arrays.fill(barramento, "-");
+
+			for (Pacote pacote : pacotesSendoTransmitidos) {
+				BigDecimal distanciaPercorrida = tempoAtual.subtract(pacote.getTempoInicio()).multiply(VELOCIDADE_DE_PROPAGACAO_DO_MEIO, DECIMAL128);
+
+				Host host = pacote.getHost();
+
+				// deslocamento é positivo para host 1 e negativo para host 2
+				double deslocamento = host.getId() == 1 ? distanciaPercorrida.doubleValue() : -distanciaPercorrida.doubleValue();
+				int posicao = (int) (host.getPosicaoBarramento() + deslocamento);
+
+				if (posicao >= 0 && posicao < barramento.length) {
+					barramento[posicao] = String.valueOf(pacote.getId());
+				}
+			}
+
+			System.out.printf("Tempo: %.3fms | %s%n", tempoAtual.multiply(valueOf(10e3)).doubleValue(), String.join("", barramento));
+
+			if (!pacotesSendoTransmitidos.isEmpty()) {
+				Thread.sleep(50);
+			}
+
+			// tempo de deslocamento de 1m
+			tempoAtual = tempoAtual.add(BigDecimal.ONE.divide(VELOCIDADE_DE_PROPAGACAO_DO_MEIO, DECIMAL128));
+		}
+
 	}
 
 }
