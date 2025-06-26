@@ -178,6 +178,8 @@ public class Simulacao {
 
 		String[] barramento = new String[COMPRIMENTO_BARRAMENTO];
 
+		BigDecimal comprimentoFrame = TEMPO_TRANSMISSAO.multiply(VELOCIDADE_DE_PROPAGACAO_DO_MEIO, PRECISAO);
+
 		while (!pacotes.isEmpty()) {
 			List<Pacote> pacotesSendoTransmitidos = new ArrayList<>();
 			List<Pacote> pacotesRemovidos = new ArrayList<>();
@@ -204,37 +206,41 @@ public class Simulacao {
 
 			for (Pacote pacote : pacotesSendoTransmitidos) {
 				Tentativa tentativa = pacote.getTentativa();
-				BigDecimal distanciaPercorrida = tempoAtual.subtract(tentativa.tempoInicio()).multiply(VELOCIDADE_DE_PROPAGACAO_DO_MEIO, DECIMAL128);
+
+				BigDecimal distanciaPercorrida = tempoAtual.subtract(tentativa.tempoInicio()).multiply(VELOCIDADE_DE_PROPAGACAO_DO_MEIO);
 
 				Host host = pacote.getHost();
 
 				// deslocamento é positivo para host 1 e negativo para host 2
 				double direcao = host.getId() == 1 ? 1 : -1;
 
-				int posicao = (int) (host.getPosicaoBarramento() + (distanciaPercorrida.doubleValue() * direcao));
+				// converter para inteiros
+				int headPos = (int) (host.getPosicaoBarramento() + distanciaPercorrida.doubleValue() * direcao);
+				int tailPos = (int) (host.getPosicaoBarramento() + (distanciaPercorrida.subtract(comprimentoFrame).doubleValue()) * direcao);
 
-				if (posicao >= 0 && posicao < barramento.length) {
-					if (barramento[posicao].equals(emojiVazio)) {
-						barramento[posicao] = "❇️";
-					} else {
-						barramento[posicao] = "✴️";
+				// preenche entre cabeça e cauda
+				int inicio = Math.min(headPos, tailPos);
+				int fim = Math.max(headPos, tailPos);
+
+				for (int i = inicio; i <= fim; i++) {
+					if (i >= 0 && i < barramento.length) {
+						if (barramento[i].equals(emojiVazio)) {
+							barramento[i] = "❇️";
+						} else {
+							barramento[i] = "✴️";
+						}
 					}
 				}
 			}
 
 			System.out.printf("Tempo: %.3fms | 💻%s💻%n", tempoAtual.multiply(valueOf(10e3)).doubleValue(), String.join("", barramento));
 
-			if (!pacotesSendoTransmitidos.isEmpty()) {
-				Thread.sleep(50);
-			}
-
 			tempoAtual = tempoAtual.add(TEMPO_PROPAGACAO_1M);
 		}
-
 	}
 
 	private static BigDecimal getPrimeroPacoteComColisao(List<Pacote> pacotes) {
-		return pacotes.stream().filter(p -> p.getTentativas().stream().anyMatch(Tentativa::hasColisao))
+		return pacotes.stream().filter(p -> p.getTentativas().stream().anyMatch(t -> !t.hasColisao()))
 				.map(p -> p.getTentativa().tempoInicio())
 				.min(BigDecimal::compareTo)
 				.orElse(ZERO);

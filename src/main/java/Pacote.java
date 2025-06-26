@@ -5,19 +5,14 @@ import java.util.List;
 public class Pacote implements Comparable<Pacote> {
 
 	private final BigDecimal tempoPrevisto;
-	private final List<BigDecimal> temposInicio = new ArrayList<>();
-	private final List<BigDecimal> temposConclusao = new ArrayList<>();
 	private final List<Tentativa> tentativas = new ArrayList<>();
-	private BigDecimal tempoColisao;
 	private BigDecimal tempo;
 	private final Host host;
-	private final int id;
 
-	public Pacote(double tempoPrevisto, Host host, int id) {
+	public Pacote(double tempoPrevisto, Host host) {
 		this.tempoPrevisto = BigDecimal.valueOf(tempoPrevisto);
 		this.tempo = BigDecimal.valueOf(tempoPrevisto);
 		this.host = host;
-		this.id = id;
 	}
 
 	public double getDelay() {
@@ -30,10 +25,6 @@ public class Pacote implements Comparable<Pacote> {
 
 	public void setTempo(BigDecimal tempo) {
 		this.tempo = tempo;
-	}
-
-	public int getId() {
-		return id;
 	}
 
 	@Override

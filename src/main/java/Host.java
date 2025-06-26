@@ -67,7 +67,7 @@ public class Host {
 
 		while (tempoAtual <= duracao) {
 			tempoAtual += max(tempoTransmissao.doubleValue(), getValorAleatorioConformeTaxa(taxaDePacotes));
-			pacotes.add(new Pacote(tempoAtual, this, id));
+			pacotes.add(new Pacote(tempoAtual, this));
 			id++;
 		}
 
