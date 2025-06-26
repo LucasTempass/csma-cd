@@ -5,6 +5,7 @@ public class Pacote implements Comparable<Pacote> {
 	private final BigDecimal tempoPrevisto;
 	private BigDecimal tempoInicio;
 	private BigDecimal tempoConclusao;
+	private BigDecimal tempoColisao;
 	private BigDecimal tempo;
 	private final Host host;
 	private final int id;
@@ -55,6 +56,14 @@ public class Pacote implements Comparable<Pacote> {
 
 	public Host getHost() {
 		return host;
+	}
+
+	public BigDecimal getTempoColisao() {
+		return tempoColisao;
+	}
+
+	public void setTempoColisao(BigDecimal tempoColisao) {
+		this.tempoColisao = tempoColisao;
 	}
 
 }
