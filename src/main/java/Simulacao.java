@@ -187,7 +187,8 @@ public class Simulacao {
 				}
 			}
 
-			Arrays.fill(barramento, "-");
+			String emojiVazio = "⬜";
+			Arrays.fill(barramento, emojiVazio);
 
 			for (Pacote pacote : pacotesSendoTransmitidos) {
 				BigDecimal distanciaPercorrida = tempoAtual.subtract(pacote.getTempoInicio()).multiply(VELOCIDADE_DE_PROPAGACAO_DO_MEIO, DECIMAL128);
@@ -195,15 +196,27 @@ public class Simulacao {
 				Host host = pacote.getHost();
 
 				// deslocamento é positivo para host 1 e negativo para host 2
-				double deslocamento = host.getId() == 1 ? distanciaPercorrida.doubleValue() : -distanciaPercorrida.doubleValue();
-				int posicao = (int) (host.getPosicaoBarramento() + deslocamento);
+				double direcao = host.getId() == 1 ? 1 : -1;
+
+				int posicao = (int) (host.getPosicaoBarramento() + (distanciaPercorrida.doubleValue() * direcao));
 
 				if (posicao >= 0 && posicao < barramento.length) {
-					barramento[posicao] = String.valueOf(pacote.getId());
+					barramento[posicao] = "❇️";
+
+					// da esquerda para direita
+					if (direcao == 1) {
+						for (int i = 0; i < posicao; i++) {
+							barramento[i] = barramento[i].equals(emojiVazio) ? "❇️":  "✴️";
+						}
+					} else {
+						for (int i = barramento.length - 1; i > posicao; i--) {
+							barramento[i] = barramento[i].equals(emojiVazio) ? "❇️":  "✴️";
+						}
+					}
 				}
 			}
 
-			System.out.printf("Tempo: %.3fms | %s%n", tempoAtual.multiply(valueOf(10e3)).doubleValue(), String.join("", barramento));
+			System.out.printf("Tempo: %.3fms | 💻%s💻%n", tempoAtual.multiply(valueOf(10e3)).doubleValue(), String.join("", barramento));
 
 			if (!pacotesSendoTransmitidos.isEmpty()) {
 				Thread.sleep(50);
